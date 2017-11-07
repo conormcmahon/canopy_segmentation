@@ -19,7 +19,10 @@ int main(int argc, char** argv)
 
     GDALDataset  *poDataset;
     GDALAllRegister();
-    poDataset = (GDALDataset *) GDALOpen( "/home/conor/Downloads/ECODSEdataset/ECODSEdataset/RSdata/camera/OSBS_002_camera.tif", GA_ReadOnly );
+    std::string dataset_number;
+    nh.param<std::string>("canopy_segmentation/rgb/dataset_number", dataset_number, "_002");
+    std::string dataset_name = "/home/conor/Downloads/ECODSEdataset/ECODSEdataset/RSdata/camera/OSBS" + dataset_number + "_camera.tif";
+    poDataset = (GDALDataset *) GDALOpen( dataset_name.c_str(), GA_ReadOnly );
     if( poDataset == NULL )
     {
         //...;

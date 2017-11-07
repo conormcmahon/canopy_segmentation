@@ -1,0 +1,7 @@
+
+canopy_segmentation:
+  chm:
+    dataset_number:     _003
+    clipping_height:    3
+  rgb:
+    dataset_number:     _003

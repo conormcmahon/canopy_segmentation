@@ -208,6 +208,10 @@ target_link_libraries(
   ${catkin_LIBRARIES} ${IL_LIBRARY}
 )
 
+
+add_library(tree_estimation src/tree_estimation.cpp)
+add_dependencies(tree_estimation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide

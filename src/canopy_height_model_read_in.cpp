@@ -6,6 +6,7 @@
 #include <pcl_ros/transforms.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/crop_box.h>
 
 #include <gdal/gdal.h>
 #include <gdal/gdal_priv.h>
@@ -27,7 +28,10 @@ int main(int argc, char** argv)
 
     GDALDataset  *poDataset;
     GDALAllRegister();
-    poDataset = (GDALDataset *) GDALOpen( "/home/conor/Downloads/ECODSEdataset/ECODSEdataset/RSdata/chm/OSBS_002_chm.tif", GA_ReadOnly );
+    std::string dataset_number;
+    nh.param<std::string>("canopy_segmentation/chm/dataset_number", dataset_number, "_002");
+    std::string dataset_name = "/home/conor/Downloads/ECODSEdataset/ECODSEdataset/RSdata/chm/OSBS" + dataset_number + "_chm.tif";
+    poDataset = (GDALDataset *) GDALOpen( dataset_name.c_str(), GA_ReadOnly );
     if( poDataset == NULL )
     {
         //...;
@@ -155,19 +159,6 @@ int main(int argc, char** argv)
   // --------------------------------------------- Set 'Wall' Parameters ---------------------------------------------
   pcl::fromROSMsg(raster_cloud_msg, *canopy_cloud);
 
-  // --------------------------------------------- Wall Damage Estimation ---------------------------------------------
-  float wall_coeffs[4];
-  wall_coeffs[0] = 0;
-  wall_coeffs[1] = 0;
-  wall_coeffs[2] = 1;
-  wall_coeffs[3] = 0;
-  point_damage_estimator.setWallCoefficients(wall_coeffs);
-  int k_search;
-  nh.param<int>("wall_features/k_search_histogram", k_search, 30);
-  point_damage_estimator.setKSearch(k_search);
-  point_damage_estimator.compute(*canopy_cloud, *wall_damage_cloud);
-  ROS_INFO_STREAM("[WallFeatures] Performed pointwise damage estimation - output cloud size is " << wall_damage_cloud->points.size());
-
   // --------------------------------------------- Voxelization ---------------------------------------------
   pcl::VoxelGrid<pcl::PointXYZRGB> vg;
   *voxelized_cloud = *canopy_cloud;
@@ -181,6 +172,41 @@ int main(int argc, char** argv)
   *voxelized_cloud = temp_pc; 
   ROS_INFO_STREAM("[WallFeatures] Performed voxelization of input cloud - output cloud size is " << voxelized_cloud->points.size());
 
+  // --------------------------------------------- Clipping ---------------------------------------------
+  float clipping_height;
+  nh.param<float>("canopy_segmentation/chm/clipping_height", clipping_height, 10);
+  pcl::CropBox<pcl::PointXYZRGB> crop;
+  crop.setInputCloud(voxelized_cloud);
+  // Set dimensions of clipping box:
+  Eigen::Vector4f min_point = Eigen::Vector4f(-100, -100, clipping_height, 0);
+  Eigen::Vector4f max_point = Eigen::Vector4f(100, 100, 100, 0);
+  crop.setMin(min_point);
+  crop.setMax(max_point);
+  // Set pose of clipping box: 
+  Eigen::Vector3f translation = Eigen::Vector3f(0, 0, 0);
+  Eigen::Vector3f rotation = Eigen::Vector3f(0, 0, 0);
+  crop.setTranslation(translation);
+  crop.setRotation(rotation);   
+  crop.setKeepOrganized(false);
+
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr temp_pcp(new pcl::PointCloud<pcl::PointXYZRGB>());
+  crop.filter(*temp_pcp);
+  *voxelized_cloud = *temp_pcp;
+
+  // --------------------------------------------- Wall Damage Estimation ---------------------------------------------
+  float wall_coeffs[4];
+  wall_coeffs[0] = 0;
+  wall_coeffs[1] = 0;
+  wall_coeffs[2] = 1;
+  wall_coeffs[3] = 0;
+  point_damage_estimator.setWallCoefficients(wall_coeffs);
+  int k_search;
+  nh.param<int>("wall_features/k_search_histogram", k_search, 30);
+  point_damage_estimator.setKSearch(k_search);
+  point_damage_estimator.compute(*voxelized_cloud, *wall_damage_cloud);
+  ROS_INFO_STREAM("[WallFeatures] Performed pointwise damage estimation - output cloud size is " << wall_damage_cloud->points.size());
+
+  // --------------------------------------------- Histogram Estimation ---------------------------------------------
   float lower_angle_bin_limit, upper_angle_bin_limit, lower_dist_bin_limit, upper_dist_bin_limit;
   bool automatically_set_bins;
   nh.param<bool>("wall_features/automatically_set_bins", automatically_set_bins, true);
@@ -226,11 +252,10 @@ int main(int argc, char** argv)
 
   while(ros::ok())
   {
-   /* cloud_pub.publish(raster_cloud_msg);
+    cloud_pub.publish(raster_cloud_msg);
     voxelized_pub.publish(voxelized_msg);
     damage_pub.publish(damage_msg);
     histogram_pub.publish(histogram_msg);
-    */
     ros::Duration(1.0).sleep();
   }
 

@@ -37,19 +37,23 @@ sensor_msgs::PointCloud2 buildCombinedCloud()
 	for(int i=0; i<chm_count; i++)
 		for(int j=0; j<chm_count; j++)
 		{
-			ROS_INFO_STREAM(i << " " << j << i*chm_count+j << i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count);
+			ROS_INFO_STREAM(i << " " << j << " " << i*chm_count+j  << " " << i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count);
 			pcl::PointXYZRGB point;
 			point.x = canopy_height_cloud_ptr->points[i*chm_count+j].x;
 			point.y = canopy_height_cloud_ptr->points[i*chm_count+j].y;
 			point.z = canopy_height_cloud_ptr->points[i*chm_count+j].z;
-			for(int i=0; i<4; i++)
-			{
-				point.r = rgb_cloud_ptr->points[i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count].r;
-				point.g = rgb_cloud_ptr->points[i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count].g;
-				point.b = rgb_cloud_ptr->points[i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count].b;
+			for(int k=0; k<rgb_count/chm_count; k++)
+				for(int m=0; m<rgb_count/chm_count; m++)
+				{
+					pcl::PointXYZRGB offset_point = point;
+					offset_point.x = point.x + (rgb_count/chm_count/2-k)/(rgb_count/chm_count);
+					offset_point.y = point.y + (rgb_count/chm_count/2-m)/(rgb_count/chm_count);
+					offset_point.r = rgb_cloud_ptr->points[i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count+rgb_count*m+k].r;
+					offset_point.g = rgb_cloud_ptr->points[i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count+rgb_count*m+k].g;
+					offset_point.b = rgb_cloud_ptr->points[i*rgb_count/chm_count*rgb_count+j*rgb_count/chm_count+rgb_count*m+k].b;
 			
+					output_cloud_ptr->points.push_back(offset_point);
 				}
-			output_cloud_ptr->points.push_back(point);
 		}
 
 	pcl::toROSMsg(*output_cloud_ptr, output_cloud);
