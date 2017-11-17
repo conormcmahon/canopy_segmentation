@@ -9,8 +9,8 @@ project(canopy_segmentation)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
 	roscpp
+  pcl_ros
 	pcl_conversions
-	pcl_ros
 	sensor_msgs
   wall_features
 )
@@ -106,7 +106,7 @@ find_package(catkin REQUIRED
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES canopy_segmentation
+  LIBRARIES tree_estimation
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
@@ -132,6 +132,12 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${PCL_
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+
+# -------------------- Tree Estimators --------------------
+add_library(tree_estimation src/tree_estimation.cpp)
+add_dependencies(tree_estimation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+
 # -------------------- POINTCLOUD LOADER --------------------
 add_executable(pointcloud_read_in src/pointcloud_read_in.cpp)
 add_dependencies(
@@ -141,6 +147,18 @@ add_dependencies(
 )
 target_link_libraries(
   pointcloud_read_in
+  ${catkin_LIBRARIES}
+)
+
+# -------------------- Tree Classification Data Loader --------------------
+add_executable(tree_classifier src/tree_classifier.cpp)
+add_dependencies(
+   tree_classifier
+  ${canopy_segmentation_EXPORTED_TARGETS}
+   ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(
+  tree_classifier
   ${catkin_LIBRARIES}
 )
 
@@ -183,6 +201,8 @@ target_link_libraries(
 )
 
 # -------------------- DATA SYNTHESIS --------------------
+FIND_LIBRARY(SHP_LIB shplib lib/libshp/libshp.so)
+
 add_executable(data_synthesis src/data_synthesis.cpp)
 add_dependencies(
    data_synthesis
@@ -191,7 +211,7 @@ add_dependencies(
 )
 target_link_libraries(
   data_synthesis
-  ${catkin_LIBRARIES}
+  ${catkin_LIBRARIES} ${SHP_LIB}
 )
 
 # -------------------- PNG LOADER --------------------
@@ -209,8 +229,7 @@ target_link_libraries(
 )
 
 
-add_library(tree_estimation src/tree_estimation.cpp)
-add_dependencies(tree_estimation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
@@ -282,7 +301,7 @@ add_dependencies(tree_estimation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 
 
 ## Install project namespaced headers
-install(DIRECTORY include/${PROJECT_NAME}/
+install(DIRECTORY include/${PROJECT_NAME}/ 
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
   PATTERN ".svn" EXCLUDE)

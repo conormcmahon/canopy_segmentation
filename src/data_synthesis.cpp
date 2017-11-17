@@ -5,6 +5,9 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.h>
 
+//#include </usr/local/include/shapefil.h>
+#include <shplib/shapefil.h>
+
 sensor_msgs::PointCloud2 canopy_height_cloud_;
 sensor_msgs::PointCloud2 rgb_cloud_;
 sensor_msgs::PointCloud2 hyperspectral_cloud_;
@@ -67,6 +70,8 @@ int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "data_synthesis");
 	ros::NodeHandle nh;
+
+	SHPOpen("fish", "fish");
 
 	ros::Subscriber canopy_height_sub = nh.subscribe<sensor_msgs::PointCloud2>("canopy_segmentation/canopy_height_cloud", 1, canopyHeightCallback);
 	ros::Subscriber rgb_height_sub = nh.subscribe<sensor_msgs::PointCloud2>("canopy_segmentation/rgb_cloud", 1, rgbCallback);

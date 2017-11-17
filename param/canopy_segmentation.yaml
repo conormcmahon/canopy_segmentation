@@ -5,3 +5,8 @@ canopy_segmentation:
     clipping_height:    3
   rgb:
     dataset_number:     _003
+  tree_classifier:
+    target_species:     PIPA
+    tree_index:         100
+    min_band:           2
+    max_band:           426

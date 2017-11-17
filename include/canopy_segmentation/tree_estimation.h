@@ -67,7 +67,7 @@ namespace CanopyInspection
 };
 
 #ifdef PCL_NO_PRECOMPILE
-#include "wall_features/wall_damage_estimation.hpp"
+#include "canopy_segmentation/tree_estimation.hpp"
 #endif // PCL_NO_PRECOMPILE
 
 #endif // TREE_ESTIMATION_
