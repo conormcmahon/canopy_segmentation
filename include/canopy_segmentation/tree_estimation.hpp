@@ -70,6 +70,8 @@ namespace CanopyInspection
 			spectrum_average_pixel.hyperspectral_data[band_index] /= input.points.size();
 		spectrum_average_pixel.avg_height /= input.points.size();
 
+		spectrum_average_pixel.crown_id = input.points[0].crown_id;		
+
 		output.points.push_back(spectrum_average_pixel);
 	}
 

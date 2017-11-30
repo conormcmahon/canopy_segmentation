@@ -14,6 +14,242 @@
 #include "canopy_segmentation/canopy_inspection_pixel.h"
 #include "canopy_segmentation/tree_estimation.h"
 
+std::vector< std::vector<float> > scalar_multiplication(std::vector< std::vector<float> > input, float scalar)
+{
+	std::vector< std::vector<float> > output(input.size());
+	for(int i=0; i<input.size(); i++)
+		for(int j=0; j<input.size(); j++)
+			output[i].push_back(input[i][j]*scalar);
+	return output;
+}
+
+// Matrix multiplication using std::vector; assumes first dimension of vectors is 'columns'
+std::vector< std::vector<float> > matrix_multiplication(std::vector< std::vector<float> > vec_1, std::vector< std::vector<float> > vec_2)
+{
+	std::vector< std::vector<float> > output(vec_1.size());
+	for(int i=0; i<output.size(); i++)
+		output[i] = std::vector<float>(vec_2[0].size());
+
+	for(int i=0; i<output.size(); i++)
+		for(int j=0; j<output[0].size(); j++)
+		{
+			output[i][j] = 0;
+			for(int k=0; k<vec_2.size(); k++)
+			{
+				output[i][j] += vec_1[i][k]*vec_2[k][j];
+			}
+		}
+
+	return output;
+}
+
+std::vector< std::vector<float> > matrix_subtraction(std::vector< std::vector<float> > vec_1, std::vector< std::vector<float> > vec_2)
+{
+	std::vector< std::vector<float> > output(vec_1.size());
+	for(int i=0; i<vec_1.size(); i++)
+		for(int j=0; j<vec_1[0].size(); j++)
+			output[i][j] = vec_1[i][j] - vec_2[i][j];
+	return output;
+}
+
+std::vector< std::vector<float> > matrix_exponent(std::vector< std::vector<float> > input, float base)
+{
+	std::vector< std::vector<float> > output(input.size());
+	for(int i=0; i<input.size(); i++)
+		for(int j=0; j<input[0].size(); j++)
+			output[i][j] = pow(base, input[i][j]);
+	return output;
+}
+
+std::vector< std::vector<float> > column_matrix(std::vector<float> input)
+{
+	std::vector< std::vector<float> > output(input.size());
+	for(int i=0; i<input.size(); i++)
+		output[i].push_back(input[i]);
+	return output;
+}
+
+std::vector< std::vector<float> > matrix_transpose(std::vector< std::vector<float> > input)
+{
+	std::vector< std::vector<float> > output(input[0].size());
+	for(int i=0; i<input[0].size(); i++)
+		for(int j=0; j<input.size(); j++)
+			output[i][j] = input[j][i];
+	return output;
+}
+
+float matrix_determinant(std::vector< std::vector<float> > input)
+{
+	if(input.size() != input[0].size())
+	{
+		ROS_ERROR_STREAM("Error - matrix entered for determinant function not square.");
+		return -1;
+	}
+
+	float output = 0;
+	if(input.size()==2)
+		output = input[0][0]*input[1][1] - input[0][1]*input[1][0];
+	else 
+		for(int i=0; i<input.size(); i++)
+		{
+			std::vector< std::vector<float> > sub_matrix(input.size()-1);
+			for(int j=0; j<sub_matrix.size(); j++)
+				for(int k=0; k<input.size(); k++)
+					if(k!=i)
+						sub_matrix[j].push_back(input[j+1][k]);
+			output += pow(-1,i+1)*matrix_determinant(sub_matrix)*input[0][i];
+		}
+	return output;
+}
+
+
+/*
+   Find the cofactor matrix of a square matrix
+   Modified from https://www.cs.rochester.edu/~brown/Crypto/assts/projects/adj.html
+*/
+std::vector< std::vector<float> > matrix_cofactor(std::vector< std::vector<float> > input)
+{
+   std::vector< std::vector<float> > temp(input.size());
+   std::vector< std::vector<float> > output(input.size());
+
+	for (int i=0;i<input.size();i++)
+	{
+		temp[i] = std::vector<float>(input.size());
+		output[i] = std::vector<float>(input.size());
+	}
+
+	for (int j=0; j<input.size(); j++) {
+		for (int i=0; i<input.size(); i++) {
+
+			/* Form the adjoint a_ij */
+			int i1 = 0;
+			for (int ii=0; ii<input.size(); ii++) {
+				if (ii == i)
+					continue;
+				int j1 = 0;
+				for (int jj=0;jj<input.size();jj++) {
+					if (jj == j)
+					continue;
+					output[i1][j1] = input[ii][jj];
+					j1++;
+				}
+				i1++;
+			}
+
+			/* Calculate the determinate */
+			float det = matrix_determinant(output);
+
+			/* Fill in the elements of the cofactor */
+			output[i][j] = pow(-1.0,i+j+2.0) * det;
+		}
+	}
+	//for (int i=0; i<n-1; i++)
+	//	free(c[i]);
+	//free(c);
+	return output;
+}
+
+std::vector< std::vector<float> > matrix_inverse(std::vector< std::vector<float> > input)
+{
+	std::vector< std::vector<float> > output;
+	output = scalar_multiplication(matrix_transpose(matrix_cofactor(input)),1/matrix_determinant(input));
+	return output;
+}
+
+std::map< std::string, std::vector<float> > maximum_likelihood_classifier( 	std::vector<std::string> species_keys,
+																			std::map< std::string, pcl::PointCloud<CanopyInspection::TreeSpectrumAverage> > tree_spectrum_map, 
+																			CanopyInspection::TreeSpectrumAverage input_tree_spectrum_average, 
+																			std::vector<int> target_bands )
+{
+	int num_bands = target_bands.size();
+
+	// Compute mean values for each band within each species
+	std::map< std::string, std::vector<float> > species_band_mean; 
+
+	for(int i=0; i<species_keys.size(); i++)
+	{
+		for(int j=0; j<num_bands; j++)
+		{
+			//ROS_INFO_STREAM(i << " " << j << " " << num_bands);
+			species_band_mean[species_keys[i]].push_back(0);
+			int num_trees = tree_spectrum_map[species_keys[i]].points.size(); 
+			//ROS_INFO_STREAM("flop");
+			for(int k=0; k<num_trees; k++)
+			{
+				species_band_mean[species_keys[i]][j] += tree_spectrum_map[species_keys[i]].points[k].hyperspectral_data[target_bands[j]];
+			//ROS_INFO_STREAM("glop");
+			}
+			//ROS_INFO_STREAM("drop drkjlkwer");
+			species_band_mean[species_keys[i]][j] /= num_trees;
+		}
+	} 
+
+	for(int i=0; i<num_bands; i++)
+	{
+		ROS_INFO_STREAM(species_band_mean["PIPA"][i]);
+	}
+
+	// Compute covariance matrices between bands within each species 
+	std::map< std::string, std::vector< std::vector<float> > > species_covariance_matrices;
+	for(int i=0; i<species_keys.size(); i++)
+	{
+		int num_trees = tree_spectrum_map[species_keys[i]].points.size(); 
+		species_covariance_matrices[species_keys[i]] = std::vector< std::vector<float> >(num_bands);
+		//species_covariance_matrices[species_keys[i]].reserve(num_bands);
+		for(int j=0; j<num_bands; j++)
+		{ 
+			for(int k=0; k<num_bands; k++)
+			{
+				species_covariance_matrices[species_keys[i]][j].push_back(0);
+//				species_covariance_matrices[species_keys[i]][j][k] = 0;
+				for(int m=0; m<num_trees; m++)
+				{
+					//ROS_INFO_STREAM(i << " " << j << " " << k << " " << m);
+					//ROS_INFO_STREAM(target_bands[j] << " " << target_bands[k] << " " << species_keys[i]);
+					//ROS_INFO_STREAM(tree_spectrum_map[species_keys[i]].points[m].hyperspectral_data[target_bands[j]] << " " << species_band_mean[species_keys[i]][k]);
+					//ROS_INFO_STREAM(tree_spectrum_map[species_keys[i]].points[m].hyperspectral_data[target_bands[k]] << " " << species_band_mean[species_keys[i]][j]);
+					float jth_factor = tree_spectrum_map[species_keys[i]].points[m].hyperspectral_data[target_bands[j]] - species_band_mean[species_keys[i]][j];
+					float kth_factor = tree_spectrum_map[species_keys[i]].points[m].hyperspectral_data[target_bands[k]] - species_band_mean[species_keys[i]][k];
+					//ROS_INFO_STREAM("lkjkljwer");
+					species_covariance_matrices[species_keys[i]][j][k] += jth_factor*kth_factor;
+				}
+				//ROS_INFO_STREAM("flooop" << species_covariance_matrices[species_keys[i]].size() << " "  << species_covariance_matrices[species_keys[i]][j].size());
+				species_covariance_matrices[species_keys[i]][j][k] /= num_trees;
+			}
+			//ROS_INFO_STREAM(j);
+		}
+		//ROS_INFO_STREAM("    " << i);
+	}
+
+	ROS_INFO_STREAM("Finished covariance calculation");
+
+	std::vector< std::vector<float> > target_matrix(num_bands);
+	for(int i=0; i<num_bands; i++)
+		target_matrix[i].push_back(input_tree_spectrum_average.hyperspectral_data[target_bands[i]]);
+	// Probabilities for each species
+	std::map<std::string, float> species_probabilities;
+	for(int i=0; i<species_keys.size(); i++)
+	{
+		ROS_INFO_STREAM("here");
+		float A = pow(2*3.14159,-num_bands/2);
+		ROS_INFO_STREAM("here1");
+		float B = pow(matrix_determinant(species_covariance_matrices[species_keys[i]]), 0.5);
+		ROS_INFO_STREAM("here2");
+		std::vector< std::vector<float> > C = matrix_exponent(scalar_multiplication(matrix_transpose(matrix_subtraction(target_matrix,column_matrix(species_band_mean[species_keys[i]]))),-0.5), 2.71828);
+		ROS_INFO_STREAM("here3");
+		std::vector< std::vector<float> > D = matrix_multiplication( matrix_inverse(species_covariance_matrices[species_keys[i]]),matrix_subtraction(target_matrix,column_matrix(species_band_mean[species_keys[i]])));
+		ROS_INFO_STREAM("here4");
+		species_probabilities[species_keys[i]] = A*B*(matrix_multiplication(C,D)[0][0]);
+														  					  
+		ROS_INFO_STREAM(species_keys[i] << " " << species_probabilities[species_keys[i]]);
+	}
+
+
+
+}
+
+
+
 // Produces estimates of the likelihood of an input TreeSpectrumAverage pointcloud being any one of the mapped input species
 std::map< std::string, std::vector<float> > tree_avg_spectral_angle_classifier(	std::vector<std::string> species_keys, 
 																				std::map< std::string, pcl::PointCloud<CanopyInspection::TreeSpectrumAverage> > tree_spectrum_map, 
@@ -29,7 +265,6 @@ std::map< std::string, std::vector<float> > tree_avg_spectral_angle_classifier(	
 			ROS_ERROR_STREAM("input cloud nan at band " << target_bands[band] << " " << input_tree_spectrum_average.hyperspectral_data[target_bands[band]]);
 		else
 			input_spectrum_mag += pow(input_tree_spectrum_average.hyperspectral_data[target_bands[band]],2);
-		ROS_ERROR_STREAM("band: " << target_bands[band] << " value: " << input_tree_spectrum_average.hyperspectral_data[target_bands[band]] << " squared: " << pow(input_tree_spectrum_average.hyperspectral_data[target_bands[band]],2) << " sum: " << input_spectrum_mag);
 	}
 	input_spectrum_mag = sqrt(input_spectrum_mag);
 
@@ -82,12 +317,6 @@ std::map< std::string, std::vector<float> > tree_avg_spectral_angle_classifier(	
 		}
 		species_mean_angle[species_keys[species_index]] /= tree_spectrum_map[species_keys[species_index]].size();
 		species_avg_height[species_keys[species_index]] /= tree_spectrum_map[species_keys[species_index]].size();
-	}
-
-	for(int species_index=0; species_index<species_keys.size(); species_index++)
-	{
-		ROS_INFO_STREAM(species_keys[species_index] << ": mean " << species_mean_angle[species_keys[species_index]] << ", min " << species_min_angle[species_keys[species_index]] );
-		ROS_INFO_STREAM("   " << species_avg_height[species_keys[species_index]] << " " << species_max_height[species_keys[species_index]] << " " << species_min_height[species_keys[species_index]]);
 	}
 
 	return tree_spectral_angles;
@@ -193,10 +422,16 @@ int main(int argc, char** argv)
 			previous_crown_id = crown_id;
 		}
 		CanopyInspection::CanopyInspectionPixel current_pixel;
+		//ROS_INFO_STREAM("bloop");
+		current_pixel.crown_id = crown_id;
 		getline(data_file, height, ',');
+		//ROS_INFO_STREAM(crown_id);
+		//ROS_INFO_STREAM(crown_id_map[crown_id]);
+		//ROS_INFO_STREAM(tree_pixel_clouds[crown_id_map[crown_id]].size()-1);
 		current_pixel.x = tree_pixel_clouds[crown_id_map[crown_id]][tree_pixel_clouds[crown_id_map[crown_id]].size()-1].points.size();
 		current_pixel.y = tree_pixel_clouds[crown_id_map[crown_id]].size();
 		current_pixel.z = strtof(height.c_str(),0);
+		//ROS_INFO_STREAM("bloop");
 		for(int i=0; i<426; i++)
 		{
 			getline(data_file, band_value, ',');
@@ -217,9 +452,14 @@ int main(int argc, char** argv)
 		
 
 	}
-	ROS_INFO_STREAM(pixel_cloud.points.size());
 
-	ROS_INFO_STREAM(tree_average_cloud.points.size() << " " << pixel_cloud.points.size() << " " << tree_pixel_clouds.size());
+	//std::vector< std::vector<float> > matrix(4);
+	//matrix[0].push_back(1); matrix[0].push_back(2); matrix[0].push_back(2); matrix[0].push_back(4);
+	//matrix[1].push_back(2); matrix[1].push_back(3); matrix[1].push_back(3); matrix[1].push_back(4);
+	//matrix[2].push_back(3); matrix[2].push_back(2); matrix[2].push_back(3); matrix[2].push_back(3);
+	//matrix[3].push_back(4); matrix[3].push_back(2); matrix[3].push_back(3); matrix[3].push_back(4);
+	//ROS_INFO_STREAM("Determinant: " << std_vector_matrix_determinant(matrix));
+	//return -1;
 
 	std::string target_species = "PIPA";
 	float tree_index = 0;
@@ -232,8 +472,8 @@ int main(int argc, char** argv)
 	std::vector<int> target_bands;
 	for(int i=min_band; i<max_band; i++)
 		target_bands.push_back(i);
-	
-	tree_avg_spectral_angle_classifier(species_id_list, species_tree_averages, species_tree_averages[target_species].points[tree_index], target_bands);
+
+	maximum_likelihood_classifier(species_id_list, species_tree_averages, species_tree_averages[target_species].points[tree_index], target_bands);
 
 	while(ros::ok())
 	{

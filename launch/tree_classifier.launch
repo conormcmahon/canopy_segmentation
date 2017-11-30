@@ -1,0 +1,15 @@
+
+<launch>
+
+  <rosparam  command="load"  file="$(find canopy_segmentation)/param/canopy_segmentation.yaml"/>
+
+	<node
+      name    = "tree_classifier"
+      pkg     = "canopy_segmentation"
+      type    = "tree_classifier"
+      args    = ""
+      output  = "screen"
+    >
+    </node>
+
+</launch>

@@ -1,0 +1,33 @@
+
+<launch>
+
+  <rosparam  command="load"  file="$(find canopy_segmentation)/param/canopy_segmentation.yaml"/>
+
+	<node
+      name    = "chm_loader"
+      pkg     = "canopy_segmentation"
+      type    = "canopy_height_model_read_in"
+      args    = ""
+      output  = "screen"
+    >
+    </node>
+
+    <node
+      name    = "rgb_loader"
+      pkg     = "canopy_segmentation"
+      type    = "rgb_camera_read_in"
+      args    = ""
+      output  = "screen"
+    >
+    </node>
+
+    <node
+      name    = "data_synthesis"
+      pkg     = "canopy_segmentation"
+      type    = "data_synthesis"
+      args    = ""
+      output  = "screen"
+    >
+    </node>
+
+</launch>

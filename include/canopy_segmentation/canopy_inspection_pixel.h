@@ -13,6 +13,7 @@ namespace CanopyInspection {
 struct CanopyInspectionPixel
 {
   PCL_ADD_POINT4D;                  // preferred way of adding a XYZ+padding
+  int crown_id;
   float RGB[3];						// RGB camera data 
   float hyperspectral_data[426];    // Hyperspectral camera data
 
@@ -21,6 +22,7 @@ struct CanopyInspectionPixel
 
 }
 POINT_CLOUD_REGISTER_POINT_STRUCT (CanopyInspection::CanopyInspectionPixel, 
+                                   (float, crown_id, crown_id)
                                    (float, x, x)
                                    (float, y, y)
                                    (float, z, z)
