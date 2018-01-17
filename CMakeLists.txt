@@ -8,10 +8,10 @@ project(canopy_segmentation)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
-	roscpp
+  roscpp
   pcl_ros
-	pcl_conversions
-	sensor_msgs
+  pcl_conversions
+  sensor_msgs
   wall_features
 )
 
@@ -211,7 +211,7 @@ add_dependencies(
 )
 target_link_libraries(
   data_synthesis
-  ${catkin_LIBRARIES} ${SHP_LIB}
+  ${catkin_LIBRARIES} #${SHP_LIB}
 )
 
 # -------------------- PNG LOADER --------------------

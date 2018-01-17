@@ -18,7 +18,7 @@ std::vector< std::vector<float> > scalar_multiplication(std::vector< std::vector
 {
 	std::vector< std::vector<float> > output(input.size());
 	for(int i=0; i<input.size(); i++)
-		for(int j=0; j<input.size(); j++)
+		for(int j=0; j<input[0].size(); j++)
 			output[i].push_back(input[i][j]*scalar);
 	return output;
 }
@@ -48,7 +48,7 @@ std::vector< std::vector<float> > matrix_subtraction(std::vector< std::vector<fl
 	std::vector< std::vector<float> > output(vec_1.size());
 	for(int i=0; i<vec_1.size(); i++)
 		for(int j=0; j<vec_1[0].size(); j++)
-			output[i][j] = vec_1[i][j] - vec_2[i][j];
+			output[i].push_back(vec_1[i][j] - vec_2[i][j]);
 	return output;
 }
 
@@ -57,7 +57,16 @@ std::vector< std::vector<float> > matrix_exponent(std::vector< std::vector<float
 	std::vector< std::vector<float> > output(input.size());
 	for(int i=0; i<input.size(); i++)
 		for(int j=0; j<input[0].size(); j++)
-			output[i][j] = pow(base, input[i][j]);
+			output[i].push_back(pow(base, input[i][j]));
+	return output;
+}
+
+std::vector< std::vector<float> > matrix_exponent_2(std::vector< std::vector<float> > input, float exponent)
+{
+	std::vector< std::vector<float> > output(input.size());
+	for(int i=0; i<input.size(); i++)
+		for(int j=0; j<input[0].size(); j++)
+			output[i].push_back(pow(input[i][j],exponent));
 	return output;
 }
 
@@ -74,7 +83,9 @@ std::vector< std::vector<float> > matrix_transpose(std::vector< std::vector<floa
 	std::vector< std::vector<float> > output(input[0].size());
 	for(int i=0; i<input[0].size(); i++)
 		for(int j=0; j<input.size(); j++)
-			output[i][j] = input[j][i];
+		{
+			output[i].push_back(input[j][i]);
+		}
 	return output;
 }
 
@@ -102,6 +113,17 @@ float matrix_determinant(std::vector< std::vector<float> > input)
 	return output;
 }
 
+void print_matrix(std::vector< std::vector<float> > input)
+{
+	std::cout << "Printing " << input.size() << " x " << input[0].size() << " matrix.\n";
+	for(int i=0; i<input.size(); i++)
+	{
+		for(int j=0; j<input[0].size(); j++)
+			std::cout << " \t" << input[i][j];
+		std::cout << "\n";
+	}
+}
+
 
 /*
    Find the cofactor matrix of a square matrix
@@ -109,38 +131,37 @@ float matrix_determinant(std::vector< std::vector<float> > input)
 */
 std::vector< std::vector<float> > matrix_cofactor(std::vector< std::vector<float> > input)
 {
-   std::vector< std::vector<float> > temp(input.size());
-   std::vector< std::vector<float> > output(input.size());
 
-	for (int i=0;i<input.size();i++)
-	{
-		temp[i] = std::vector<float>(input.size());
+   	std::vector< std::vector<float> > output(input.size());
+	for (int i=0; i<input.size(); i++)
 		output[i] = std::vector<float>(input.size());
-	}
+   	
+   	std::vector< std::vector<float> > temp(input.size()-1);
+	for (int i=0; i<input.size()-1; i++)
+		temp[i] = std::vector<float>(input.size()-1);
 
 	for (int j=0; j<input.size(); j++) {
 		for (int i=0; i<input.size(); i++) {
-
 			/* Form the adjoint a_ij */
 			int i1 = 0;
 			for (int ii=0; ii<input.size(); ii++) {
 				if (ii == i)
 					continue;
 				int j1 = 0;
-				for (int jj=0;jj<input.size();jj++) {
+				for (int jj=0; jj<input.size(); jj++) {
 					if (jj == j)
-					continue;
-					output[i1][j1] = input[ii][jj];
+						continue;
+					temp[i1][j1] = input[ii][jj];
 					j1++;
 				}
 				i1++;
 			}
 
 			/* Calculate the determinate */
-			float det = matrix_determinant(output);
+			float det = matrix_determinant(temp);
 
 			/* Fill in the elements of the cofactor */
-			output[i][j] = pow(-1.0,i+j+2.0) * det;
+			output[i][j] = pow(-1.0,i+j+1.0) * det;
 		}
 	}
 	//for (int i=0; i<n-1; i++)
@@ -170,16 +191,12 @@ std::map< std::string, std::vector<float> > maximum_likelihood_classifier( 	std:
 	{
 		for(int j=0; j<num_bands; j++)
 		{
-			//ROS_INFO_STREAM(i << " " << j << " " << num_bands);
 			species_band_mean[species_keys[i]].push_back(0);
 			int num_trees = tree_spectrum_map[species_keys[i]].points.size(); 
-			//ROS_INFO_STREAM("flop");
 			for(int k=0; k<num_trees; k++)
 			{
 				species_band_mean[species_keys[i]][j] += tree_spectrum_map[species_keys[i]].points[k].hyperspectral_data[target_bands[j]];
-			//ROS_INFO_STREAM("glop");
 			}
-			//ROS_INFO_STREAM("drop drkjlkwer");
 			species_band_mean[species_keys[i]][j] /= num_trees;
 		}
 	} 
@@ -203,8 +220,8 @@ std::map< std::string, std::vector<float> > maximum_likelihood_classifier( 	std:
 				species_covariance_matrices[species_keys[i]][j].push_back(0);
 //				species_covariance_matrices[species_keys[i]][j][k] = 0;
 				for(int m=0; m<num_trees; m++)
-				{
-					//ROS_INFO_STREAM(i << " " << j << " " << k << " " << m);
+				
+{					//ROS_INFO_STREAM(i << " " << j << " " << k << " " << m);
 					//ROS_INFO_STREAM(target_bands[j] << " " << target_bands[k] << " " << species_keys[i]);
 					//ROS_INFO_STREAM(tree_spectrum_map[species_keys[i]].points[m].hyperspectral_data[target_bands[j]] << " " << species_band_mean[species_keys[i]][k]);
 					//ROS_INFO_STREAM(tree_spectrum_map[species_keys[i]].points[m].hyperspectral_data[target_bands[k]] << " " << species_band_mean[species_keys[i]][j]);
@@ -214,7 +231,7 @@ std::map< std::string, std::vector<float> > maximum_likelihood_classifier( 	std:
 					species_covariance_matrices[species_keys[i]][j][k] += jth_factor*kth_factor;
 				}
 				//ROS_INFO_STREAM("flooop" << species_covariance_matrices[species_keys[i]].size() << " "  << species_covariance_matrices[species_keys[i]][j].size());
-				species_covariance_matrices[species_keys[i]][j][k] /= num_trees;
+				species_covariance_matrices[species_keys[i]][j][k] /= num_bands;
 			}
 			//ROS_INFO_STREAM(j);
 		}
@@ -228,23 +245,40 @@ std::map< std::string, std::vector<float> > maximum_likelihood_classifier( 	std:
 		target_matrix[i].push_back(input_tree_spectrum_average.hyperspectral_data[target_bands[i]]);
 	// Probabilities for each species
 	std::map<std::string, float> species_probabilities;
+	std::cout << "\n\n bands for PIEL";
+	for(int i=0; i<tree_spectrum_map["PIEL"].points.size(); i++)
+		for(int j=0; j<num_bands; j++)
+			std::cout << "\t" << tree_spectrum_map["PIEL"].points[i].hyperspectral_data[target_bands[j]];
+	std::cout << "\n";
+	for(int i=0; i<species_band_mean["PIEL"].size(); i++)
+		std::cout << "\t" << species_band_mean["PIEL"][i];
+	std::cout << "\n";
 	for(int i=0; i<species_keys.size(); i++)
 	{
-		ROS_INFO_STREAM("here");
 		float A = pow(2*3.14159,-num_bands/2);
-		ROS_INFO_STREAM("here1");
-		float B = pow(matrix_determinant(species_covariance_matrices[species_keys[i]]), 0.5);
-		ROS_INFO_STREAM("here2");
-		std::vector< std::vector<float> > C = matrix_exponent(scalar_multiplication(matrix_transpose(matrix_subtraction(target_matrix,column_matrix(species_band_mean[species_keys[i]]))),-0.5), 2.71828);
-		ROS_INFO_STREAM("here3");
-		std::vector< std::vector<float> > D = matrix_multiplication( matrix_inverse(species_covariance_matrices[species_keys[i]]),matrix_subtraction(target_matrix,column_matrix(species_band_mean[species_keys[i]])));
-		ROS_INFO_STREAM("here4");
-		species_probabilities[species_keys[i]] = A*B*(matrix_multiplication(C,D)[0][0]);
-														  					  
-		ROS_INFO_STREAM(species_keys[i] << " " << species_probabilities[species_keys[i]]);
+		std::cout << "\n\n" << species_keys[i] << "\n";
+		//print_matrix(species_covariance_matrices[species_keys[i]]);
+		//ROS_INFO_STREAM(matrix_determinant(species_covariance_matrices[species_keys[i]]));
+		//ROS_INFO_STREAM(pow(pow(matrix_determinant(species_covariance_matrices[species_keys[i]]),2),.25));
+		//print_matrix(species_covariance_matrices[species_keys[i]]);
+		std::cout << matrix_determinant(species_covariance_matrices[species_keys[i]]);
+		float B = pow(pow(matrix_determinant(species_covariance_matrices[species_keys[i]]),2),-.25);
+		std::vector< std::vector<float> > C = matrix_subtraction(target_matrix,column_matrix(species_band_mean[species_keys[i]]));
+		std::vector< std::vector<float> > D = matrix_inverse(species_covariance_matrices[species_keys[i]]);
+		std::vector< std::vector<float> > p1 = matrix_multiplication(matrix_transpose(C),D);
+		std::vector< std::vector<float> > p2 = matrix_multiplication(p1,(C));
+		std::vector< std::vector<float> > p3 = scalar_multiplication(p2,-0.5);
+		ROS_INFO_STREAM("size: " << p3.size() << p3[0].size());
+		//std::vector< std::vector<float> > E = scalar_multiplication(matrix_multiplication(matrix_multiplication(matrix_transpose(D),E),D),-0.5);
+		ROS_INFO_STREAM(A << " " << B);
+		//print_matrix(C);
+		//print_matrix(D);
+		//print_matrix(p1);
+		//print_matrix(p2);
+		//print_matrix(p3);
+		species_probabilities[species_keys[i]] = A*B*exp(p3[0][0]);
+		ROS_INFO_STREAM(species_probabilities[species_keys[i]]);	   					  
 	}
-
-
 
 }
 
@@ -453,12 +487,36 @@ int main(int argc, char** argv)
 
 	}
 
+
+	std::ofstream output_file;
+	output_file.open ("species_ordered.csv");
+	for(int i=0; i<species_id_list.size(); i++)
+	{
+		for(int j=0; j<species_tree_averages[species_id_list[i]].points.size(); j++)
+		{
+			output_file << species_id_list[i] << ", " << species_tree_averages[species_id_list[i]].points[j].crown_id << ", ";
+			output_file << species_tree_averages[species_id_list[i]].points[j].min_radius << ", ";
+			output_file << species_tree_averages[species_id_list[i]].points[j].max_radius << ", ";
+			output_file << species_tree_averages[species_id_list[i]].points[j].min_height << ", ";
+			output_file << species_tree_averages[species_id_list[i]].points[j].max_height << ", ";
+			output_file << species_tree_averages[species_id_list[i]].points[j].avg_height << ", ";
+			for(int k=0; k<426; k++)
+				output_file << species_tree_averages[species_id_list[i]].points[j].hyperspectral_data[k] << ", ";
+			output_file << "\n";
+		}
+	}
+	output_file.close();
+
 	//std::vector< std::vector<float> > matrix(4);
 	//matrix[0].push_back(1); matrix[0].push_back(2); matrix[0].push_back(2); matrix[0].push_back(4);
 	//matrix[1].push_back(2); matrix[1].push_back(3); matrix[1].push_back(3); matrix[1].push_back(4);
 	//matrix[2].push_back(3); matrix[2].push_back(2); matrix[2].push_back(3); matrix[2].push_back(3);
 	//matrix[3].push_back(4); matrix[3].push_back(2); matrix[3].push_back(3); matrix[3].push_back(4);
-	//ROS_INFO_STREAM("Determinant: " << std_vector_matrix_determinant(matrix));
+	//ROS_INFO_STREAM("Input:");
+	//print_matrix(matrix);
+	//ROS_INFO_STREAM("Output:");
+	//print_matrix(matrix_inverse(matrix));
+	//ros::Duration(5).sleep();
 	//return -1;
 
 	std::string target_species = "PIPA";

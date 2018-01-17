@@ -39,6 +39,7 @@ namespace CanopyInspection
 
 		CanopyInspection::TreeSpectrumAverage spectrum_average_pixel;
 
+		spectrum_average_pixel.min_radius = sqrt(input.points.size()/3.14159);
 		spectrum_average_pixel.avg_height = 0;
 		spectrum_average_pixel.max_height = 0;
 		spectrum_average_pixel.min_height = 100;
