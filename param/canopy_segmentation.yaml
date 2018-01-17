@@ -7,6 +7,6 @@ canopy_segmentation:
     dataset_number:     _005
   tree_classifier:
     target_species:     PIPA
-    tree_index:         100
+    tree_index:         2
     min_band:           2
-    max_band:           7
+    max_band:           8
